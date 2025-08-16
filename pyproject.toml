@@ -23,7 +23,7 @@ classifiers = [
   "Intended Audience :: Science/Research",
   "Intended Audience :: Healthcare Industry",
   "License :: OSI Approved :: MIT License",
-  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.12",
   "Framework :: Flask",
   "Topic :: Scientific/Engineering :: Image Recognition",
   "Topic :: Internet :: WWW/HTTP :: Dynamic Content :: CGI Tools/Libraries"

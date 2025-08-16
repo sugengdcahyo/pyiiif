@@ -1,8 +1,12 @@
 # project directory
 .DS_Store
 config/*
+
 media/*
+!media/.gitkeep
+
 slides/*
+!slides/.gitkeep
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
