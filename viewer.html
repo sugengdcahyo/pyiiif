@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>IIIF Viewer - OpenSeadragon</title>
+  <script src="https://openseadragon.github.io/openseadragon/openseadragon.min.js"></script>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+    }
+    #openseadragon {
+      width: 100vw;
+      height: 100vh;
+      background: #000;
+    }
+  </style>
+</head>
+<body>
+  <div id="openseadragon"></div>
+
+  <script>
+    OpenSeadragon({
+      id: "openseadragon",
+      prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
+      tileSources: {
+        "@context": "http://iiif.io/api/image/2/context.json",
+        "@id": "http://localhost:5050/iiif/45740.svs",
+        "height": 32914,
+        "width": 46000,
+        "profile": [ "http://iiif.io/api/image/2/level2.json" ],
+        "protocol": "http://iiif.io/api/image",
+        "tiles": [{
+          "width": 1024,
+          "scaleFactors": [1,2,4,8,16,32]
+        }]
+      },
+      showNavigator: true,
+      showRotationControl: true,
+      visibilityRatio: 1.0,           // hanya tile yang terlihat saja
+      immediateRender: false,         // cegah render seluruh tile duluan
+      maxZoomPixelRatio: 1.5,         // batasi zoom tidak lebih besar dari ukuran asli
+      defaultZoomLevel: 0.5,          // supaya tidak langsung ke zoom tinggi
+      minZoomLevel: 0.2,
+      crossOriginPolicy: "Anonymous"
+    });
+  </script>
+</body>
+</html>
