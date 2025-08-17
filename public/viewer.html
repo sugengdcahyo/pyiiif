@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>IIIF Viewer – Carbon Tree + OpenSeadragon</title>
+
+  <!-- Carbon CSS (token & typografi) -->
+  <link rel="stylesheet" href="https://unpkg.com/carbon-components/css/carbon-components.min.css">
+
+  <!-- OpenSeadragon -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/openseadragon/5.0.1/openseadragon.min.js"></script>
+
+  <style>
+    html, body { height: 100%; }
+    body { margin: 0; background:#161616; color:#f4f4f4; font-family:"IBM Plex Sans", system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif; }
+
+    .app { display:flex; height:100vh; width:100vw; overflow:hidden; }
+
+    /* ===== Sidebar (Tree View style Carbon) ===== */
+    aside#sidebar {
+      width: 320px; min-width: 280px; max-width: 380px;
+      background:#262626; border-right:1px solid #393939; overflow:auto;
+    }
+    .sidebar__wrap { padding: 1rem 1rem 2rem; }
+    .sidebar__title { font-size:0.875rem; color:#8d8d8d; margin:.25rem 0 1rem; letter-spacing:.02em; text-transform:uppercase; }
+
+    /* Search */
+    .search { margin-bottom: .75rem; }
+    .search input {
+      width:100%; border:1px solid #525252; border-radius:.25rem; background:#161616; color:#f4f4f4;
+      padding:.625rem .75rem;
+    }
+    .search input:focus { outline:2px solid #0f62fe; border-color:#0f62fe; }
+
+    /* Tree */
+    .tree { list-style:none; margin:0; padding:.5rem; background:#f4f4f41a; border-radius:.25rem; }
+    .tree li { margin: .125rem 0; }
+    .tree__node {
+      display:flex; align-items:center; gap:.5rem;
+      padding:.5rem .5rem; border-radius:.25rem; cursor:pointer; color:#e0e0e0;
+    }
+    .tree__node:hover { background:#393939; }
+    .tree__node[aria-current="true"] { background:#0f62fe33; }
+    .tree__icon { width:1rem; height:1rem; display:inline-block; opacity:.9; }
+    .tree__caret {
+      width:1rem; height:1rem; display:inline-flex; align-items:center; justify-content:center;
+      transform:rotate(-90deg); transition:transform .15s ease;
+      color:#c6c6c6;
+    }
+    .tree__node.expanded > .tree__caret { transform:rotate(0deg); }
+    .tree__children { margin-left:1.5rem; padding-left:.5rem; border-left:1px dashed #525252; display:none; }
+    .tree__node.expanded + .tree__children { display:block; }
+
+    /* ===== Viewer (OpenSeadragon) ===== */
+    main#viewer { flex:1; display:flex; flex-direction:column; min-width:0; background:#000; }
+    .viewer__toolbar { display:flex; align-items:center; gap:.5rem; padding:.5rem .75rem; background:#161616; border-bottom:1px solid #393939; }
+    .tag { display:inline-flex; align-items:center; padding:.125rem .5rem; border-radius:999px; font-size:.75rem; background:#393939; }
+    .tag--green { background:#198038; }
+    #openseadragon { flex:1; background:#000; min-height:0; }
+    .btn-set { margin-top:.5rem; display:flex; gap:.375rem; flex-wrap:wrap; }
+    .btn { border:1px solid #6f6f6f; background:#262626; color:#f4f4f4; padding:.375rem .625rem; border-radius:.25rem; cursor:pointer; }
+    .btn:hover { background:#393939; }
+  </style>
+</head>
+<body class="bx--body">
+  <div class="app">
+    <!-- ========== SIDEBAR (Tree View) ========== -->
+    <aside id="sidebar" role="navigation" aria-label="Carbon component tree">
+      <div class="sidebar__wrap">
+        <h2 class="bx--type-productive-heading-04" style="margin:.25rem 0 .25rem">Tree View</h2>
+        <div class="sidebar__title">Carbon Components</div>
+
+        <!-- Search filter -->
+        <div class="search">
+          <input id="tree-search" type="text" placeholder="Search components…">
+        </div>
+
+        <!-- Tree -->
+        <ul id="tree" class="tree" role="tree">
+          <!-- Level 1 -->
+          <li>
+            <div class="tree__node" role="treeitem" aria-expanded="false" data-folder>
+              <span class="tree__caret">▸</span>
+              <svg class="tree__icon" viewBox="0 0 16 16"><path fill="currentColor" d="M1 4h5l1 1h8v7H1z"/></svg>
+              <span>Buttons</span>
+            </div>
+            <ul class="tree__children" role="group">
+              <li><div class="tree__node" role="treeitem" data-comp="Button/Primary">Primary</div></li>
+              <li><div class="tree__node" role="treeitem" data-comp="Button/Secondary">Secondary</div></li>
+              <li><div class="tree__node" role="treeitem" data-comp="Button/Tertiary">Tertiary</div></li>
+            </ul>
+          </li>
+
+          <li>
+            <div class="tree__node" role="treeitem" aria-expanded="true" data-folder>
+              <span class="tree__caret">▸</span>
+              <svg class="tree__icon" viewBox="0 0 16 16"><path fill="currentColor" d="M1 4h5l1 1h8v7H1z"/></svg>
+              <span>Forms</span>
+            </div>
+            <ul class="tree__children" role="group" style="display:block">
+              <li><div class="tree__node" role="treeitem" data-comp="Checkbox">Checkbox</div></li>
+              <li><div class="tree__node" role="treeitem" data-comp="Dropdown">Dropdown</div></li>
+              <li><div class="tree__node" role="treeitem" data-comp="Toggle">Toggle</div></li>
+            </ul>
+          </li>
+
+          <li>
+            <div class="tree__node expanded" role="treeitem" aria-expanded="true" data-folder>
+              <span class="tree__caret">▸</span>
+              <svg class="tree__icon" viewBox="0 0 16 16"><path fill="currentColor" d="M1 4h5l1 1h8v7H1z"/></svg>
+              <span>Viewer Presets</span>
+            </div>
+            <ul class="tree__children" role="group" style="display:block">
+              <li><div class="tree__node" role="treeitem" data-action="fit">Fit to Screen</div></li>
+              <li><div class="tree__node" role="treeitem" data-action="1x">Zoom 1×</div></li>
+              <li><div class="tree__node" role="treeitem" data-action="2x">Zoom 2×</div></li>
+              <li><div class="tree__node" role="treeitem" data-action="home">Home</div></li>
+            </ul>
+          </li>
+
+          <li>
+            <div class="tree__node" role="treeitem" data-comp="About">
+              <svg class="tree__icon" viewBox="0 0 16 16"><path fill="currentColor" d="M8 1a7 7 0 100 14A7 7 0 008 1zm1 11H7V7h2v5zm0-6H7V4h2v2z"/></svg>
+              <span>About</span>
+            </div>
+          </li>
+        </ul>
+
+        <!-- Quick viewer actions -->
+        <!-- <div class="btn-set">
+          <button id="zoom-in" class="btn">Zoom in</button>
+          <button id="zoom-out" class="btn">Zoom out</button>
+        </div> -->
+      </div>
+    </aside>
+
+    <!-- ========== VIEWER (OpenSeadragon) ========== -->
+    <main id="viewer" role="main" aria-label="OpenSeadragon viewer">
+      <div class="viewer__toolbar">
+        <span class="tag tag--green">IIIF</span>
+        <span class="tag">OpenSeadragon</span>
+        <span class="tag">Carbon-like UI</span>
+      </div>
+      <div id="openseadragon"></div>
+    </main>
+  </div>
+
+  <script>
+    // ====== TREE LOGIC (expand/collapse, filter, actions) ======
+    const tree = document.getElementById('tree');
+    tree.addEventListener('click', (e) => {
+      const node = e.target.closest('.tree__node');
+      if (!node) return;
+
+      // Toggle folder
+      if (node.dataset.folder !== undefined) {
+        node.classList.toggle('expanded');
+        const expanded = node.classList.contains('expanded');
+        node.setAttribute('aria-expanded', String(expanded));
+      }
+
+      // Preset actions for viewer
+      const action = node.dataset.action;
+      if (action && window.viewer) {
+        if (action === 'fit' || action === 'home') viewer.viewport.goHome(true);
+        if (action === '1x') viewer.viewport.zoomTo(1.0, null, true);
+        if (action === '2x') viewer.viewport.zoomTo(2.0, null, true);
+      }
+
+      // Mark current
+      if (!node.dataset.folder) {
+        tree.querySelectorAll('.tree__node[aria-current="true"]').forEach(n => n.removeAttribute('aria-current'));
+        node.setAttribute('aria-current', 'true');
+      }
+    });
+
+    // Search filter
+    const search = document.getElementById('tree-search');
+    search.addEventListener('input', () => {
+      const q = search.value.trim().toLowerCase();
+      tree.querySelectorAll('.tree__node').forEach(n => {
+        if (n.dataset.folder !== undefined) return; // folder label
+        const text = n.textContent.trim().toLowerCase();
+        const match = text.includes(q);
+        const li = n.parentElement; // <li>
+        li.style.display = match ? '' : 'none';
+      });
+      // auto-expand all groups when searching
+      const anyQuery = q.length > 0;
+      tree.querySelectorAll('.tree__node[data-folder]').forEach(f => {
+        if (anyQuery) f.classList.add('expanded');
+        f.setAttribute('aria-expanded', String(f.classList.contains('expanded')));
+      });
+    });
+
+    // ====== OPENSEADRAGON ======
+    window.viewer = OpenSeadragon({
+      id: "openseadragon",
+      prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
+      tileSources: "http://localhost:5050/iiif/CMU-1.svs/info.json",
+      showNavigator: true,
+      showRotationControl: true,
+      visibilityRatio: 1.0,
+      maxZoomPixelRatio: 1.5,
+      defaultZoomLevel: 0.5,
+      minZoomLevel: 0.2,
+      crossOriginPolicy: "Anonymous"
+    });
+
+    // Quick buttons
+    document.getElementById('zoom-in').onclick  = () => viewer.viewport.zoomBy(1.2, null, true);
+    document.getElementById('zoom-out').onclick = () => viewer.viewport.zoomBy(0.8, null, true);
+  </script>
+</body>
+</html>
