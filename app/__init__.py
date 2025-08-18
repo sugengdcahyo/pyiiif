@@ -17,40 +17,76 @@ VALID_EXTENSIONS = ('.svs', '.tif', '.tiff', '.ndpi', '.vms', '.mrxs')
 def get_slide_path(image_id):
     return os.path.join(SLIDE_PATH, image_id)
 
-def parse_region(region_str, full_width, full_height):
-    if region_str == "full":
-        return 0, 0, full_width, full_height
+# --- helper: parse_region ---
+def parse_region(region, full_w, full_h):
+    if region == "full":
+        return (0, 0, full_w, full_h)
     try:
-        return tuple(map(int, region_str.split(',')))
+        # format: x,y,w,h
+        x, y, w, h = map(int, region.split(","))
+        return (x, y, w, h)
     except:
-        return None
+        return (0, 0, full_w, full_h)  # fallback: full
 
-def parse_size(size_str, w_orig, h_orig):
+# --- helper: parse_size ---
+def parse_size(size, w, h):
+    if size == "full":
+        return (w, h)
+    if size.startswith("pct:"):
+        pct = float(size.split(":")[1])
+        return (int(w * pct / 100), int(h * pct / 100))
     try:
-        if size_str == "full":
-            return w_orig, h_orig
-        elif size_str.startswith("pct:"):
-            pct = float(size_str.split(":")[1]) / 100.0
-            return int(w_orig * pct), int(h_orig * pct)
-        elif size_str.endswith(","):
-            width = int(size_str[:-1])
-            height = int(h_orig * (width / w_orig))
-            return width, height
-        elif size_str.startswith(","):
-            height = int(size_str[1:])
-            width = int(w_orig * (height / h_orig))
-            return width, height
-        elif "," in size_str:
-            return tuple(map(int, size_str.split(",")))
+        if size.endswith(","):   # format: width,
+            dst_w = int(size[:-1])
+            dst_h = int(h * (dst_w / w))
+            return (dst_w, dst_h)
+        elif size.startswith(","):  # format: ,height
+            dst_h = int(size[1:])
+            dst_w = int(w * (dst_h / h))
+            return (dst_w, dst_h)
+        else:  # format: width,height
+            dst_w, dst_h = map(int, size.split(","))
+            return (dst_w, dst_h)
     except:
-        return None
+        return (w, h)  # fallback
 
-def get_best_level(slide, target_w, target_h):
-    for level in range(slide.level_count):
-        w, h = slide.level_dimensions[level]
-        if target_w <= w and target_h <= h:
-            return level
-    return slide.level_count - 1
+def clamp_region(x, y, w, h, full_w, full_h):
+    x = max(0, min(x, full_w))
+    y = max(0, min(y, full_h))
+    w = max(0, min(w, full_w - h))
+    h = max(0, min(h, full_h - y))
+    return x, y, w, h
+
+def get_best_level(slide, src_w, src_h, dst_w, dst_h, prefer_no_upsample=True):
+    dst_w = max(1, int(dst_w))
+    dst_h = max(1, int(dst_w))
+    src_w = max(1, int(src_w))
+    src_h = max(1, int(src_h))
+
+    # downsample target needed
+    target = max(src_w / dst_w, src_h / dst_h) 
+
+    downs = list(slide.level_downsamples)
+    n = len(downs)
+
+    if prefer_no_upsample:
+        best = 0 
+        for i in range(n):
+            if downs[i] <= target + 1e-9:
+                best = i
+            else:
+                break
+
+            return best
+
+    return min(range(n), key=lambda i: abs(downs[i] - target))
+
+# def get_best_level(slide, target_w, target_h):
+#     for level in range(slide.level_count):
+#         w, h = slide.level_dimensions[level]
+#         if target_w <= w and target_h <= h:
+#             return level
+#     return slide.level_count - 1
 
 # --- IIIF Tile Endpoint ---
 @app.route('/iiif/<path:identifier>/<region>/<size>/<rotation>/<quality>.<format>')
@@ -68,9 +104,15 @@ def tile(identifier, region, size, rotation, quality, format):
         abort(500, description=f"Slide open failed: {e}")
 
     full_width, full_height = slide.dimensions
-    x, y, w, h = parse_region(region, full_width, full_height) or (0, 0, full_width, full_height)
-    dst_w, dst_h = parse_size(size, w, h) or (w, h)
 
+    # --- parse region ---
+    x, y, w, h = parse_region(region, full_width, full_height)
+    x, y, w, h = clamp_region(x, y, w, h, full_width, full_height)
+
+    # --- parse size ---
+    dst_w, dst_h = parse_size(size, w, h)
+
+    # --- parse rotation (IIIF: may start with "!" for mirrored) ---
     is_mirrored = rotation.startswith("!")
     rotation = rotation.lstrip("!")
     try:
@@ -80,27 +122,37 @@ def tile(identifier, region, size, rotation, quality, format):
     except:
         abort(400, description="Invalid rotation")
 
-    level = get_best_level(slide, dst_w, dst_h)
-    scale = slide.level_dimensions[0][0] / slide.level_dimensions[level][0]
+    # --- select best level ---
+    # level = get_best_level(slide, dst_w, dst_h)
+    # scale = slide.level_dimensions[0][0] / slide.level_dimensions[level][0]
+
+    level = get_best_level(slide, w, h, dst_w, dst_h, prefer_no_upsample=True) 
+    scale = slide.level_downsamples[level]
 
     try:
+        # baca region dari slide
         region_img = slide.read_region(
-            (int(x / scale), int(y / scale)),
-            level,
-            (int(w / scale), int(h / scale))
+            (int(x / scale), int(y / scale)),  # posisi
+            level,                            # level pyramid
+            (int(w / scale), int(h / scale))  # ukuran
         ).convert("RGB")
 
+        # resize bila perlu
         if (dst_w, dst_h) != (w, h):
             region_img = region_img.resize((dst_w, dst_h), Image.Resampling.LANCZOS)
+
+        # mirror / rotate / gray
         if is_mirrored:
             region_img = ImageOps.mirror(region_img)
         if rotation:
             region_img = region_img.rotate(-rotation, expand=True)
         if quality == "gray":
             region_img = region_img.convert("L")
+
     except Exception as e:
         abort(500, description=f"Tile read error: {e}")
 
+    # --- format output ---
     format_map = {"jpg": "JPEG", "jpeg": "JPEG", "png": "PNG", "tif": "TIFF"}
     fmt = format_map.get(format.lower())
     if fmt is None:

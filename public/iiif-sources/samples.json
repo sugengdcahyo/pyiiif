@@ -1,0 +1,28 @@
+[
+  {
+    "name": "Samples",
+    "folder": true,
+    "expanded": true,
+    "children": [
+      {
+        "name": "CMU-1",
+        "iiif": "http://localhost:5050/iiif/CMU-1.svs/info.json"
+      },
+      {
+        "name": "GP.2.14",
+        "iiif": "http://localhost:5050/iiif/GP.2.14.svs/info.json"
+      }
+    ]
+  },
+  {
+    "name": "Colon",
+    "folder": true,
+    "expanded": true,
+    "children": [
+      {
+        "name": "Pyramid Vips Stitch",
+        "iiif": "http://localhost:5050/iiif/tebal_stitch_353d8da7_pyramid.svs/info.json"
+      }
+    ]
+  }
+]
