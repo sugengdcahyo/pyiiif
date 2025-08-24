@@ -1,0 +1,18 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite
+*.log
+.env
+.venv/
+.vscode/
+.idea/
+.DS_Store
+.git/
+.gitignore
+uv.lock.backup
+slides/*      # jika ingin mount dari host saja saat dev, bukan dibundel
+media/*
+

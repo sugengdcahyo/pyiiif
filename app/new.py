@@ -15,6 +15,7 @@ CORS(app, origins=["http://localhost:8080", "http://0.0.0.0:8080"])
 
 TILE_SIZE = 512
 
+# ===== Path yang konsisten & absolut =====
 BASE_DIR = Path(__file__).resolve().parent          # .../app
 PROJECT_ROOT = BASE_DIR.parent                      # .../
 SLIDE_PATH = (PROJECT_ROOT / "slides").resolve()    # .../slides  (ABSOLUT!)
@@ -25,7 +26,7 @@ VALID_EXTENSIONS = ('.svs', '.tif', '.tiff', '.ndpi', '.vms', '.mrxs')
 JPEG_OPTS = dict(quality=80, optimize=True, progressive=True)
 PNG_OPTS  = dict(optimize=True)
 
-# Hard guardrails
+# Hard guardrails (hindari abuse)
 MAX_OUT_W = 8192
 MAX_OUT_H = 8192
 

@@ -1,6 +1,6 @@
 [
   {
-    "name": "Samples",
+    "name": "SVS Samples",
     "folder": true,
     "expanded": true,
     "children": [
@@ -15,13 +15,17 @@
     ]
   },
   {
-    "name": "Colon",
+    "name": "NDPI Samples",
     "folder": true,
     "expanded": true,
     "children": [
       {
         "name": "Pyramid Vips Stitch",
         "iiif": "http://localhost:5050/iiif/tebal_stitch_353d8da7_pyramid.svs/info.json"
+      },
+      {
+        "name": "A 001",
+        "iiif": "http://localhost:5050/iiif/A_001.ndpi/info.json"
       }
     ]
   }
