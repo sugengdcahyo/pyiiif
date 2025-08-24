@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  iiif:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: iiif-service
+    ports:
+      - "5050:5050"
+    volumes:
+      # bind slides folder dari host ke container
+      - ./slides:/app/slides:ro
+      # kalau perlu edit html/js/css dari public langsung di host
+      - ./public:/app/public:ro
+    environment:
+      # opsional, sesuaikan kebutuhan Flask/Gunicorn
+      - PORT=5050
+      - PYTHONUNBUFFERED=1
+      - PYTHONDONTWRITEBYTECODE=1
+    restart: unless-stopped

@@ -15,7 +15,7 @@ export function initViewer(iiifUrl, osdEl, opts = {}) {
     constrainDuringPan: true,
     loadTilesWithAjax: true,
     crossOriginPolicy: "Anonymous",
-    imageLoaderLimit: 12,
+    imageLoaderLimit: 16,
     maxImageCacheCount: 512,
     showNavigator: true,
     showRotationControl: true

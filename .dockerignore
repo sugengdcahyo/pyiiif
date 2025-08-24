@@ -13,6 +13,30 @@ __pycache__/
 .git/
 .gitignore
 uv.lock.backup
-slides/*      # jika ingin mount dari host saja saat dev, bukan dibundel
-media/*
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtualenv / uv / venv
+.venv/
+uv.lock
+*.egg-info/
+
+# VCS
+.git/
+.gitignore
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# OS / temp
+.DS_Store
+Thumbs.db
+
+# Data besar (jika mount di runtime)
+slides/
+media/
