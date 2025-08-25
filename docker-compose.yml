@@ -12,7 +12,7 @@ services:
       # bind slides folder dari host ke container
       - ./slides:/app/slides:ro
       # kalau perlu edit html/js/css dari public langsung di host
-      - ./public:/app/public:ro
+      # - ./public:/app/public:ro
     environment:
       # opsional, sesuaikan kebutuhan Flask/Gunicorn
       - PORT=5050

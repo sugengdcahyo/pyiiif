@@ -8,11 +8,11 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_NO_CACHE_DIR=1 \
     PORT=5050
 
+# Install OpenSlide dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libopenslide0 openslide-tools \
-    libglib2.0-0 libjpeg62-turbo libopenjp2-7 libpng16-16 zlib1g \
+    libglib2.0-0 libjpeg62-turbo libopenjp2-7 libpng16-16 libtiff-dev zlib1g \
     build-essential \
- && apt-get upgrade -y \
  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -27,7 +27,7 @@ RUN pip install --upgrade pip setuptools wheel \
 COPY . .
 
 # Coba install dari pyproject; jika gagal, install requirements di dalam app (opsional)
-RUN pip install -e . || true
+# RUN pip install -e . || true
 
 # Expose
 EXPOSE 5050
