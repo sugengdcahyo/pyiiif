@@ -4,7 +4,7 @@ services:
   iiif:
     build:
       context: .
-      dockerfile: docker/Dockerfile
+      dockerfile: Dockerfile
     container_name: iiif-service
     ports:
       - "5050:5050"
