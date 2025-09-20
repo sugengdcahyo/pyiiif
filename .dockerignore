@@ -40,3 +40,4 @@ Thumbs.db
 # Data besar (jika mount di runtime)
 slides/
 media/
+data/

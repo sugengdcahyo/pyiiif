@@ -8,6 +8,8 @@ media/*
 slides/*
 !slides/.gitkeep
 
+data/*
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -246,3 +248,4 @@ fabric.properties
 
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
+
