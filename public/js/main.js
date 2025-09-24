@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // init tree (load dari JSON + interaksi)
   initTree(treeEl, viewer, {
     searchEl,
-    sourcesUrl: "./iiif-sources/samples.json",
+    sourcesUrl: "metadata/menu?group_by=type",
     inlineFallbackId: "iiif-sources-inline"
   });
 

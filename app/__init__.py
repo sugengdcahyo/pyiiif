@@ -5,7 +5,10 @@ from .config import get_config
 from .errors import register_error_handlers
 from .routes.iiif import bp as iiif_bp
 from .routes.viewer import viewer_bp
+from .routes.metadata import bp as metadata_bp
 import os
+
+from app.routes import metadata
 
 
 load_dotenv()
@@ -31,6 +34,7 @@ def create_app() -> Flask:
     CORS(app, origins=app.config["CORS_ORIGINS"])
 
     # blueprint
+    app.register_blueprint(metadata_bp, url_prefix="/metadata")
     app.register_blueprint(iiif_bp, url_prefix="/iiif")
     app.register_blueprint(viewer_bp, url_prefix="/")
 

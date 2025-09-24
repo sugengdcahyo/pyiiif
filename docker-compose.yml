@@ -8,11 +8,13 @@ services:
     container_name: iiif-service
     ports:
       - "5050:5050"
+    env_file:
+      - .env
+    command: >
+      sh -c "gunicorn -w ${GUNICORN_WORKERS:-2} -k gthread --threads ${GUNICORN_THREADS:-2} -b 0.0.0.0:5050 wsgi:app --timeout 120"
     volumes:
       # bind slides folder dari host ke container
       - ./slides:/app/slides:ro
-      # kalau perlu edit html/js/css dari public langsung di host
-      # - ./public:/app/public:ro
     environment:
       # opsional, sesuaikan kebutuhan Flask/Gunicorn
       - PORT=5050

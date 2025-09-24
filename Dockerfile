@@ -9,11 +9,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PORT=5050
 
 # Install OpenSlide dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && \
+  apt-get install -y --no-install-recommends \
     libopenslide0 openslide-tools \
     libglib2.0-0 libjpeg62-turbo libopenjp2-7 libpng16-16 libtiff-dev zlib1g \
     build-essential \
- && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -31,5 +32,6 @@ COPY . .
 
 # Expose
 EXPOSE 5050
-CMD ["gunicorn", "-w", "2", "-k", "gthread", "--thread", "2", "-b", "0.0.0.0:5050", "wsgi:app", "--timeout", "120"]
+# CMD ["gunicorn", "-w", "2", "-k", "gthread", "--threads", "2", "-b", "0.0.0.0:5050", "wsgi:app", "--timeout", "120"]
+CMD ["gunicorn", "-w", "${GUNICORN_WORKERS:-2}", "-k", "gthread", "--threads", "${GUNICORN_THREADS:-2}", "-b", "0.0.0.0:5050", "wsgi:app", "--timeout", "120"]
 

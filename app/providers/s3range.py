@@ -3,6 +3,7 @@ import json
 import io
 import base64
 import os
+from botocore.config import Config
 from PIL import Image, ImageFile
 from pathlib import Path
 from flask import abort
@@ -14,32 +15,34 @@ load_dotenv()
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 Image.MAX_IMAGE_PIXELS = None  # disable DecompressionBombError
 
-s3 = boto3.client(
-        "s3",
-        aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID", ""),
-        aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
-        region_name=os.environ.get("AWS_REGION", "")
-    )
+
+s3cfg = Config(
+    retries={"max_attempts": 2, "mode": "standard"},
+    connect_timeout=2,
+    read_timeout=5
+)
+
+#-- singleton boto3 client --
+session = boto3.Session()
+s3 = session.client(
+    "s3",
+    aws_access_key_id=os.environ.get("AWS_ACCESS_KEY_ID", ""),
+    aws_secret_access_key=os.environ.get("AWS_SECRET_ACCESS_KEY", ""),
+    region_name=os.environ.get("AWS_REGION", ""),
+    config=s3cfg
+)
 
 
-@lru_cache(maxsize=128)
+@lru_cache(maxsize=512)
 def _load_metadata(bucket, key):
-    obj = s3.get_object(Bucket=bucket, Key=key)
-    return json.loads(obj["Body"].read())
+    try:
+        obj = s3.get_object(Bucket=bucket, Key=key)
+        return json.loads(obj["Body"].read())
+    except s3.exceptions.NoSuchKey:
+        abort(404, description="File not found.")
+    except Exception as e:
+        abort(500, description=f"S3 error: {e}")
 
-
-# def _choose_level(info, zoom, target_w):
-#     full_w = info["width"]
-
-#     # rasio downsample yang diinginkan
-#     desired_scale = full_w / target_w
-
-#     # pilih level dengan downsample terdekat
-#     best = min(
-#         zoom["levels"],
-#         key=lambda l: abs(l.get("downsample", 1) - desired_scale)
-#     )
-#     return best["level"]
 
 def _choose_level(info, zoom, target_w, region_w):
     # hitung rasio downsample yang dibutuhkan
@@ -53,7 +56,6 @@ def _choose_level(info, zoom, target_w, region_w):
     return best["level"]
 
 
-
 def get_info(identifier, cfg, request):
     name, ext = Path(identifier).stem, Path(identifier).suffix
 
@@ -62,23 +64,18 @@ def get_info(identifier, cfg, request):
 
     identifier = f"iiif/wsi/{identifier}"
     key = f"{cfg['S3_PREFIX'].rstrip('/')}/info/{name}.info.json"
-
-    s3 = boto3.client(
-        's3',
-        aws_access_key_id=cfg['AWS_ACCESS_KEY_ID'],
-        aws_secret_access_key=cfg['AWS_SECRET_ACCESS_KEY'],
-        region_name=cfg['AWS_REGION']
-    )
     bucket = cfg['S3_BUCKET']
 
-    try:
-        obj = s3.get_object(Bucket=bucket, Key=key)
-        body = obj["Body"].read()
-        metadata = json.loads(body)
-    except s3.exceptions.NoSuchKey:
-        abort(404, description="File not found")
-    except Exception as e:
-        abort(500, description=str(e))
+    metadata = _load_metadata(bucket=bucket, key=key)
+
+    # try:
+    #     obj = s3.get_object(Bucket=bucket, Key=key)
+    #     body = obj["Body"].read()
+    #     metadata = json.loads(body)
+    # except s3.exceptions.NoSuchKey:
+    #     abort(404, description="File not found")
+    # except Exception as e:
+    #     abort(500, description=str(e))
 
     if not metadata:
         abort(404, description="Metadata not found")
