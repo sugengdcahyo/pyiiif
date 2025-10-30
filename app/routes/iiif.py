@@ -1,6 +1,6 @@
 from flask import (
     Blueprint, current_app, request,
-    abort, make_response, jsonify)
+    abort, make_response)
 from app.utils.http import cache_headers
 from app.providers import openslide as openslide_provider
 from app.providers import s3range as s3range_provider

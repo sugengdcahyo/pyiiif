@@ -153,8 +153,15 @@ def get_tile(identifier, region, size, rotation, quality, fmt, cfg):
     fragment = resp["Body"].read()
 
     # --- gabungkan jpegtables + fragment ---
-    tables = base64.b64decode(zoom.get("jpegtables", "")) if "jpegtables" in zoom else b""
-    jpeg_bytes = tables + fragment
+    jpeg_tables_b64 = zoom.get("jpegtables")
+
+    if jpeg_tables_b64:
+        tables = base64.b64decode(jpeg_tables_b64)
+        jpeg_bytes = tables + fragment
+    else:
+        jpeg_bytes = fragment
+    # tables = base64.b64decode(zoom.get("jpegtables", "")) if "jpegtables" in zoom else b""
+    # jpeg_bytes = tables + fragment
 
     img = Image.open(io.BytesIO(jpeg_bytes)).convert("RGB")
 

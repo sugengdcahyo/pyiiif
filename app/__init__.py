@@ -8,8 +8,6 @@ from .routes.viewer import viewer_bp
 from .routes.metadata import bp as metadata_bp
 import os
 
-from app.routes import metadata
-
 
 load_dotenv()
 
