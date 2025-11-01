@@ -41,6 +41,8 @@ dependencies = [
   "openslide-bin>=4.0.0.8",
   "boto3>=1.40.17",
   "tifffile>=2025.9.9",
+  "python-json-logger>=4.0.0",
+  "pymongo>=4.15.3",
 ]
 
 [project.urls]
