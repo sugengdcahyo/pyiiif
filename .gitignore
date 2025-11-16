@@ -1,3 +1,6 @@
+# Ignore ETL log transaction
+etl*
+
 # project directory
 .DS_Store
 config/*
