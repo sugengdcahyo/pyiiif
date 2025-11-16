@@ -30,16 +30,16 @@ def info_json(identifier):
 @bp.get("/<path:identifier>/<region>/<size>/<rotation>/<quality>.<format>")
 def tile(identifier, region, size, rotation, quality, format):
     provider = get_provider()
-    try:
-        payload = provider.get_tile(
-            identifier, region,
-            size, rotation,
-            quality, format, current_app.config
-        )
-        resp = make_response(payload)
-        resp.mimetype = f"image/{format.lower()}"
-        return cache_headers(resp)
-    except ValueError as e:
-        abort(400, description=str(e))
-    except Exception as e:
-        abort(500, description=str(e))
+    # try:
+    payload = provider.get_tile(
+        identifier, region,
+        size, rotation,
+        quality, format, current_app.config
+    )
+    resp = make_response(payload)
+    resp.mimetype = f"image/{format.lower()}"
+    return cache_headers(resp)
+    # except ValueError as e:
+    #     abort(400, description=str(e))
+    # except Exception as e:
+    #     abort(500, description=str(e))
