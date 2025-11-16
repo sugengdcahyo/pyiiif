@@ -3,11 +3,13 @@ from functools import lru_cache
 from flask import (
     Blueprint, request, abort
 )
+from dotenv import load_dotenv
+from pymongo import MongoClient
+from bson.json_util import dumps
+
 
 import json
 import boto3
-from dotenv import load_dotenv
-
 import os
 
 
@@ -15,7 +17,6 @@ import os
 load_dotenv()
 
 
-bucket_name = "dev-neurabot"
 prefixes = ["iiif/info/", "iiif/zoom/", "iiif/wsi/"]
 
 
@@ -34,97 +35,153 @@ s3 = boto3.client(
     region_name=aws_region
 )
 
+# =====================================================
+# MongoDB Configuration
+# =====================================================
+MONGO_URI = os.getenv("MONGO_URI", "")
+MONGO_DB = os.getenv("MONGO_DB", "")
+MONGO_COLLECTION = os.getenv("MONGO_COLLECTION", "")
+
+client = MongoClient(MONGO_URI)
+db = client[MONGO_DB]
+collection = db[MONGO_COLLECTION]
+
 bp = Blueprint("metadata", __name__)
 
 
 def group_by_size(data):
     """
-    Kategorikan iiif/wsi files berdasarkan size → Carbon Tree format
+    Kategorikan IIIF/WSI files berdasarkan ukuran file (small, medium, large)
+    dan formatkan hasilnya ke Carbon Tree style.
     """
     groups = {"small": [], "medium": [], "large": []}
 
-    for f in data.get("iiif/wsi/", []):
-        size = f["size"]
-        name_noext = os.path.splitext(f["name"])[0]
+    cursor = collection.find({}, {
+        "_id": 0,
+        "file_name": 1,
+        "file_ext": 1,
+        "size_bytes": 1,
+        "size_gb": 1,
+        "last_modified": 1
+    })
+
+    for f in cursor:
+        size = f.get("size_bytes", 0)
+        name_noext = os.path.splitext(f["file_name"])[0]
+        ext = f.get("file_ext", "unknown")
 
         node = {
-            "id": f"{f['type']}-{name_noext}",
+            "id": f"{ext}-{name_noext}",
             "value": name_noext,
             "name": name_noext.replace("_", " "),
-            "iiif": f"/iiif/{f['name']}/info.json"
+            "type": ext,
+            "iiif": f"/iiif/{f['file_name']}/info.json",
+            "size_gb": round(f.get("size_gb", 0), 3),
+            "last_modified": f.get("last_modified")
         }
 
-        if size < 100 * 1024 * 1024:           # < 100MB
+        if size < 100 * 1024 * 1024:        # < 100MB
             groups["small"].append(node)
-        elif size < 1024 * 1024 * 1024:        # < 1GB
+        elif size < 1024 * 1024 * 1024:     # < 1GB
             groups["medium"].append(node)
         else:
             groups["large"].append(node)
 
-    tree = []
-    for cat, children in groups.items():
-        tree.append({
-            "id": cat,
-            "value": cat.capitalize(),
-            "name": cat.capitalize(),
+    return [
+        {
+            "id": "small", 
+            "name": "Small (<100MB)", 
+            "extended": True,
             "folder": True,
-            "expanded": True,
-            "children": children
-        })
-
-    return tree
+            "children": groups["small"]
+        },
+        {
+            "id": "medium", 
+            "name": "Medium (100MB–1GB)", 
+            "extended": True,
+            "folder": True,
+            "children": groups["medium"]
+        },
+        {
+            "id": "large", 
+            "name": "Large (>1GB)", 
+            "extended": True,
+            "folder": True,
+            "children": groups["large"]
+        }
+    ]
 
 
 def group_by_type(data):
     """
-    Kategorikan iiif/wsi files berdasarkan ekstensi → Carbon Tree format
+    Kategorikan IIIF/WSI files berdasarkan tipe ekstensi file (.svs, .ndpi, .tiff, dll)
+    dan formatkan hasilnya ke Carbon Tree style.
     """
-    grouped = defaultdict(list)
+    pipeline = [
+        {"$group": {
+            "_id": "$file_ext",
+            "files": {
+                "$push": {
+                    "file_name": "$file_name",
+                    "size_gb": "$size_gb",
+                    "last_modified": "$last_modified",
+                    "size_bytes": "$size_bytes"
+                }
+            },
+            "total_files": {"$sum": 1},
+            "total_size_gb": {"$sum": "$size_gb"}
+        }},
+        {"$sort": {"_id": 1}}
+    ]
 
-    for f in data.get("iiif/wsi/", []):
-        ftype = f.get("type", "unknown").lower()
-        name_noext = os.path.splitext(f["name"])[0]
+    groups = []
+    for group in collection.aggregate(pipeline):
+        ext = group["_id"] or "unknown"
+        files = []
+        for f in group["files"]:
+            name_noext = os.path.splitext(f["file_name"])[0]
+            files.append({
+                "id": f"{ext}-{name_noext}",
+                "value": name_noext,
+                "name": name_noext.replace("_", " "),
+                "type": ext,
+                "iiif": f"/iiif/{f['file_name']}/info.json",
+                "size_gb": round(f.get("size_gb", 0), 3),
+                "last_modified": f.get("last_modified")
+            })
 
-        node = {
-            "id": f"{ftype}-{name_noext}",
-            "value": name_noext,
-            "name": name_noext.replace("_", " "),
-            "iiif": f"/iiif/{f['name']}/info.json"
-        }
-        grouped[ftype].append(node)
-
-    tree = []
-    for ftype, children in grouped.items():
-        tree.append({
-            "id": ftype,
-            "value": f"{ftype.upper()} Samples",
-            "name": f"{ftype.upper()} Samples",
-            "folder": True,
+        groups.append({
+            "id": ext,
+            "name": ext.upper(),
+            "total_files": group["total_files"],
+            "total_size_gb": round(group["total_size_gb"], 3),
             "expanded": True,
-            "children": children
+            "folder": True,
+            "children": sorted(files, key=lambda x: x["size_gb"], reverse=True)
         })
 
-    return tree
+    return groups
 
 
+# =====================================================
+# Endpoint utama
+# =====================================================
 @lru_cache(maxsize=512)
 @bp.get("/menu")
 def get_menu():
-    key = "iiif/metadata/iiif_data.json"
-    obj = s3.get_object(
-        Bucket=bucket_name,
-        Key=key
-    )
-
-    body = obj["Body"].read().decode("utf-8")
-    data = json.loads(body)
-
+    """
+    Endpoint untuk mengambil metadata dari MongoDB.
+    Bisa digrouping berdasarkan `?group_by=type` atau `?group_by=size`.
+    """
     group_by = request.args.get("group_by", None)
 
     if group_by == "type":
-        data = group_by_type(data)
+        data = group_by_type(collection)
     elif group_by == "size":
-        data = group_by_size(data)
+        data = group_by_size(collection)
+    else:
+        # default: tampilkan semua data granular
+        data = list(collection.find({}, {"_id": 0}).limit(100))  # limit untuk keamanan
 
     return data
 

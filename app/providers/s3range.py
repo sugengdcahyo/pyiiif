@@ -48,11 +48,14 @@ def _choose_level(info, zoom, target_w, region_w):
     # hitung rasio downsample yang dibutuhkan
     desired_scale = region_w / target_w   # contoh: 16384 / 512 = 32
 
+    print(zoom)
+
     # pilih level dengan downsample terdekat
     best = min(
         zoom["levels"],
         key=lambda l: abs(l.get("downsample", 1) - desired_scale)
     )
+    print("\n\nbest level ->", best)
     return best["level"]
 
 
@@ -62,10 +65,10 @@ def get_info(identifier, cfg, request):
     if ext.lower() not in cfg['VALID_EXTENSIONS']:
         abort(400, description="Unsupported file extension")
 
-    identifier = f"iiif/wsi/{identifier}"
+    identifier = f"raw/{identifier}"
     key = f"{cfg['S3_PREFIX'].rstrip('/')}/info/{name}.info.json"
     bucket = cfg['S3_BUCKET']
-
+    
     metadata = _load_metadata(bucket=bucket, key=key)
 
     # try:

@@ -4,7 +4,8 @@ from flask import Flask
 from flask_cors import CORS
 from .config import get_config, Config
 from .errors import register_error_handlers
-from .routes.iiif import bp as iiif_bp
+# from .routes.iiif import bp as iiif_bp
+from .routes.iiif_ifds import iiif_bp
 from .routes.viewer import viewer_bp
 from .routes.metadata import bp as metadata_bp
 import os
