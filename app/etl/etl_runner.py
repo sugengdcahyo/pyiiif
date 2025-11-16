@@ -1,4 +1,5 @@
 import json
+import os
 import boto3
 from botocore.retries.adaptive import bucket
 
@@ -36,7 +37,7 @@ class WSIETLPipeline:
 
     def process_one(self, doc):
         s3_key = doc["key"]
-        filename = doc["file_name"].replace(".svs", "")
+        filename, _ = os.path.splitext(doc["file_name"])
 
         print(f"\n=== Processing {s3_key} ===")
 
