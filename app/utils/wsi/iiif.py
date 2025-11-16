@@ -37,7 +37,7 @@ class IIIFInfoBuilder:
             "width": w,
             "height": h,
             "tiles": [{"width": tw, "scaleFactors": scale}],
-            "levels": levels,
+            "sizes": levels,
             "scaleFactors": scale
         }
 
@@ -51,6 +51,6 @@ class ZoomLevelBuilder:
             "tileWidth": info.get("tiles", [{}])[0].get("width"),
             "tileHeight": info.get("tiles", [{}])[0].get("height", info.get("tileHeight")),
             "scaleFactors": info["scaleFactors"],
-            "levels": info["levels"]
+            "sizes": info["sizes"]
         }
 

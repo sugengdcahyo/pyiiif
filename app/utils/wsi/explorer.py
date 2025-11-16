@@ -1,4 +1,5 @@
 # wsi/explorer.py
+import base64
 import struct
 from pprint import pprint
 
@@ -242,19 +243,59 @@ class WSITagExplorer:
         # 1. filter IFD tiled
         usable = [ifd for ifd in self.ifds if is_tiled(ifd)]
 
+        if not usable:
+            return {
+                "jpegtables": None,
+                "levels": []
+            }
+
         # 2. urutkan berdasarkan resolusi terbesar
         usable_sorted = sorted(
             usable,
             key=lambda x: x["tags"][256]["value"],
             reverse=True
         )
+        
+        # 3. Fetch base resolution to count downsample
+        base_width = usable_sorted[0]["tags"][256]["value"]
 
-        # 3. extract
+        # 4. Fetch JPEG Tables (with tag code 347)
+        jpt = None
+        jpeg_tag = usable_sorted[0]["tags"].get(347)
+
+        if jpeg_tag:
+            raw = self._decode_value(jpeg_tag["type"], jpeg_tag["count"], jpeg_tag["value"])
+
+            if isinstance(raw, list):
+                raw = bytes(raw)
+
+            jpt = base64.b64encode(raw).decode("utf-8")
+        
+        # 5. Build all levels
         levels = []
-        for i, ifd in enumerate(usable_sorted):
+        for level_idx, ifd in enumerate(usable_sorted):
             meta = self.extract_tile_level(ifd)
-            meta["level"] = i
-            meta["ifd_offset"] = ifd["offset"]
-            levels.append(meta)
 
-        return {"levels": levels}
+            offsets = [t["offset"] for t in meta["tiles"]]
+            lengths = [t["length"] for t in meta["tiles"]]
+
+            # rename & normalize schema
+            lv = {
+                "level": level_idx,
+                "width": meta["width"],
+                "height": meta["height"],
+                "tile_width": meta["tileWidth"],
+                "tile_height": meta["tileHeight"],
+                "downsample": round(base_width / meta["width"], 4),
+                "tiles": [
+                    {"offset": o, "length": l}
+                    for o, l in zip(offsets, lengths)
+                ]
+            }
+
+            levels.append(lv)
+
+        return {
+            "jpegtables": jpt,
+            "levels": levels
+        }
