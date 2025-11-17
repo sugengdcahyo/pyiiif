@@ -15,7 +15,9 @@ export function renderNode(node) {
     div.setAttribute("aria-expanded", String(!!node.expanded));
 
     const caret = document.createElement("span");
-    caret.className = "tree__caret"; caret.textContent = "▸";
+    caret.className = "tree__caret"; 
+    caret.textContent = "▸"; 
+    caret.style.fontSize = "1.5em"; // Adjust the size as needed
 
     const icon = document.createElement("svg");
     icon.className = "tree__icon"; icon.setAttribute("viewBox","0 0 16 16");

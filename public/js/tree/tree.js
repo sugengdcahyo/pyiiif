@@ -46,7 +46,7 @@ export async function initTree(treeEl, viewer, { searchEl, sourcesUrl, inlineFal
   });
 }
 
-async function loadSources(sourcesUrl = "metadata/menu?group_by=type", inlineFallbackId) {
+async function loadSources(sourcesUrl = "metadata/menu?group_by=size", inlineFallbackId) {
   try {
     const url = new URL(sourcesUrl, location.href).toString();
     const res = await fetch(url, { cache: "no-cache" });

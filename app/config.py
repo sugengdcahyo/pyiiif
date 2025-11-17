@@ -25,12 +25,12 @@ class Config:
     SLIDE_PATH = Path(
         os.getenv("SLIDE_PATH", PROJECT_ROOT / "slides")
     ).resolve()
-    
+
     VALID_EXTENSIONS = (
         '.svs', '.tif', '.tiff', 
         '.ndpi', '.vms', '.mrxs'
     )
-    
+
     MAX_OUT_W = int(os.getenv("MAX_OUT_W", 8192))
     MAX_OUT_H = int(os.getenv("MAX_OUT_H", 8192))
 
@@ -43,11 +43,17 @@ class Config:
         if origin.strip()
     ]
 
-    AWS_SECRET_KEY_ID = os.getenv("AWS_SECRET_KEY_ID", "")
+    AWS_ACCESS_KEY_ID = os.getenv("AWS_ACCESS_KEY_ID", "")
     AWS_SECRET_ACCESS_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")
     AWS_REGION = os.getenv("AWS_REGION", "")
     S3_BUCKET = os.getenv("S3_BUCKET", "")
     S3_PREFIX = os.getenv("S3_SLIDE_PREFIX", "")
+
+    # config prefix metadata
+    PREFIX_RAW = os.getenv("IIIF_PREFIX_RAW", "raw")
+    PREFIX_INFO = os.getenv("IIIF_PREFIX_INFO", "iiif/info")
+    PREFIX_IFDS = os.getenv("IIIF_PREFIX_IFDS", "iiif/ifds")
+    PREFIX_ZOOM = os.getenv("IIIF_PREFIX_ZOOM", "iiif/zoom")
 
     # config backend enginee
     IIIF_BACKEND = os.getenv("IIIF_BACKEND", "openslide")
