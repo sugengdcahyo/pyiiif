@@ -6,9 +6,8 @@ from flask import (
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from bson.json_util import dumps
+from collections import defaultdict
 
-
-import json
 import boto3
 import os
 
@@ -49,12 +48,13 @@ collection = db[MONGO_COLLECTION]
 bp = Blueprint("metadata", __name__)
 
 
-def group_by_size(data):
+def group_by_size(collection):
     """
-    Kategorikan IIIF/WSI files berdasarkan ukuran file (small, medium, large)
-    dan formatkan hasilnya ke Carbon Tree style.
+    Kelompokkan file berdasarkan `size_range` dari MongoDB
+    dan urutkan file di dalam tiap folder dari ukuran terkecil ke terbesar.
     """
-    groups = {"small": [], "medium": [], "large": []}
+
+    groups = defaultdict(list)
 
     cursor = collection.find({}, {
         "_id": 0,
@@ -62,11 +62,11 @@ def group_by_size(data):
         "file_ext": 1,
         "size_bytes": 1,
         "size_gb": 1,
+        "size_range": 1,
         "last_modified": 1
     })
 
     for f in cursor:
-        size = f.get("size_bytes", 0)
         name_noext = os.path.splitext(f["file_name"])[0]
         ext = f.get("file_ext", "unknown")
 
@@ -77,39 +77,28 @@ def group_by_size(data):
             "type": ext,
             "iiif": f"/iiif/{f['file_name']}/info.json",
             "size_gb": round(f.get("size_gb", 0), 3),
+            "size_bytes": f.get("size_bytes", 0),
             "last_modified": f.get("last_modified")
         }
 
-        if size < 100 * 1024 * 1024:        # < 100MB
-            groups["small"].append(node)
-        elif size < 1024 * 1024 * 1024:     # < 1GB
-            groups["medium"].append(node)
-        else:
-            groups["large"].append(node)
+        category = f.get("size_range", "UNKNOWN")
+        groups[category].append(node)
 
-    return [
-        {
-            "id": "small", 
-            "name": "Small (<100MB)", 
-            "extended": True,
+    # Sortir tiap kategori berdasarkan size_bytes ASC
+    result = []
+    for category, files in groups.items():
+
+        files_sorted = sorted(files, key=lambda x: x["size_bytes"])
+
+        result.append({
+            "id": category,
+            "name": category,
+            "expanded": True,
             "folder": True,
-            "children": groups["small"]
-        },
-        {
-            "id": "medium", 
-            "name": "Medium (100MB–1GB)", 
-            "extended": True,
-            "folder": True,
-            "children": groups["medium"]
-        },
-        {
-            "id": "large", 
-            "name": "Large (>1GB)", 
-            "extended": True,
-            "folder": True,
-            "children": groups["large"]
-        }
-    ]
+            "children": files_sorted
+        })
+
+    return result
 
 
 def group_by_type(data):
