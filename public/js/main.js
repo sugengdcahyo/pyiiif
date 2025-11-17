@@ -30,7 +30,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // sumber awal IIIF
   const qsIIIF   = new URLSearchParams(location.search).get("iiif");
   const lastIIIF = localStorage.getItem("lastIiif");
-  const DEFAULT_IIIF = "http://localhost:5050/iiif/CMU-1.svs/info.json";
+  const DEFAULT_IIIF = "http://localhost:5050/iiif/GP.2.14.svs/info.json";
   const IIIF_URL = qsIIIF || lastIIIF || DEFAULT_IIIF;
 
   // init viewer
@@ -39,7 +39,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // init tree (load dari JSON + interaksi)
   initTree(treeEl, viewer, {
     searchEl,
-    sourcesUrl: "metadata/menu?group_by=type",
+    sourcesUrl: "metadata/menu?group_by=size",
     inlineFallbackId: "iiif-sources-inline"
   });
 
