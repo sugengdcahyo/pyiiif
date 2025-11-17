@@ -8,7 +8,7 @@ from pathlib import Path
 from PIL import Image, ImageFile
 from flask import abort
 from botocore.config import Config
-from math import ceil
+from math import ceil, floor
 from io import BytesIO
 
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -76,13 +76,17 @@ def load_ifds(bucket, key):
 # LEVEL SELECTION (IIIF)
 # ----------------------------------------------------
 def choose_level(levels, full_width, target_width, region_width):
-    desired_scale = region_width / target_width  # e.g. 16384/512 = 32
+    # jika user request FULL → jangan hitung 'desired_scale', 
+    # tetapi pilih level paling rendah yang ada.
+    if target_width == region_width:
+        # ini artinya size="full" tanpa resizing 
+        # → pilih level PALING RENDAH
+        return levels[-1]
 
-    best = min(
-        levels,
-        key=lambda lvl: abs(lvl.get("downsample", 1) - desired_scale)
-    )
+    desired_scale = region_width / target_width
+    best = min(levels, key=lambda lvl: abs(lvl.get("downsample", 1) - desired_scale))
     return best
+
 
 
 # ----------------------------------------------------
@@ -101,25 +105,38 @@ def fetch_fragment(bucket, key, offset, length):
 # MULTI-TILE COMPOSING (range → image)
 # ----------------------------------------------------
 def compose_region(level, bucket, wsi_key, lx, ly, lw, lh, jpegtables):
-    tile_w = level["tile_width"]
-    tile_h = level["tile_height"]
-    width = level["width"]
-    height = level["height"]
-    tiles = level["tiles"]
+    # pastikan integer
+    tile_w = int(level["tile_width"])
+    tile_h = int(level["tile_height"])
+    width  = int(level["width"])
+    height = int(level["height"])
+    tiles  = level["tiles"]
 
     tiles_x = ceil(width / tile_w)
     tiles_y = ceil(height / tile_h)
 
-    tx0 = ceil(lx // tile_w)
-    ty0 = ceil(ly // tile_h)
-    tx1 = ceil((lx + lw - 1) // tile_w)
-    ty1 = ceil((ly + lh - 1) // tile_h)
+    # lx, ly, lw, lh bisa datang sebagai float → paksa ke int dulu
+    lx = int(lx)
+    ly = int(ly)
+    lw = int(lw)
+    lh = int(lh)
 
-    canvas_w = ceil((tx1 - tx0 + 1) * tile_w)
-    canvas_h = ceil((ty1 - ty0 + 1) * tile_h)
+    tx0 = lx // tile_w
+    ty0 = ly // tile_h
+    tx1 = (lx + lw - 1) // tile_w
+    ty1 = (ly + lh - 1) // tile_h
+
+    # clamp tile range within bounds
+    tx0 = max(0, min(int(tx0), tiles_x - 1))
+    tx1 = max(0, min(int(tx1), tiles_x - 1))
+    ty0 = max(0, min(int(ty0), tiles_y - 1))
+    ty1 = max(0, min(int(ty1), tiles_y - 1))
+
+    canvas_w = int((tx1 - tx0 + 1) * tile_w)
+    canvas_h = int((ty1 - ty0 + 1) * tile_h)
+
     canvas = Image.new("RGB", (canvas_w, canvas_h))
 
-    # decode jpegtables sekali
     tables = base64.b64decode(jpegtables) if jpegtables else b""
 
     for ty in range(ty0, ty1 + 1):
@@ -130,22 +147,38 @@ def compose_region(level, bucket, wsi_key, lx, ly, lw, lh, jpegtables):
                 continue
 
             t = tiles[tile_idx]
-            frag = fetch_fragment(bucket, wsi_key, t["offset"], t["length"])
+            frag = fetch_fragment(bucket, wsi_key, int(t["offset"]), int(t["length"]))
 
-            # gabungkan tables + fragment
             tile_bytes = tables + frag
-
-            img = Image.open(BytesIO(tile_bytes))
+            img = Image.open(io.BytesIO(tile_bytes))
             img.load()
 
-            px = (tx - tx0) * tile_w
-            py = (ty - ty0) * tile_h
+            px = int((tx - tx0) * tile_w)
+            py = int((ty - ty0) * tile_h)
             canvas.paste(img, (px, py))
 
-    rx = lx - tx0 * tile_w
-    ry = ly - ty0 * tile_h
+    rx = int(lx - tx0 * tile_w)
+    ry = int(ly - ty0 * tile_h)
 
     return canvas.crop((rx, ry, rx + lw, ry + lh))
+
+
+def fast_thumbnail(level, bucket, wsi_key, jpegtables):
+    # ambil 1 tile saja
+    tile = level["tiles"][0]
+    frag = fetch_fragment(bucket, wsi_key, tile["offset"], tile["length"])
+
+    jpg = base64.b64decode(jpegtables) + frag if jpegtables else frag
+    img = Image.open(BytesIO(jpg))
+    img.load()
+
+    # thumbnail hard-coded (atau bisa baca target)
+    thumb = img.resize((512, 512), Image.LANCZOS)
+
+    buf = BytesIO()
+    thumb.save(buf, "JPEG")
+    buf.seek(0)
+    return buf.getvalue()
 
 
 # ----------------------------------------------------
@@ -153,21 +186,37 @@ def compose_region(level, bucket, wsi_key, lx, ly, lw, lh, jpegtables):
 # ----------------------------------------------------
 def get_info(identifier, cfg, request):
     bucket = cfg["S3_BUCKET"]
-    name = Path(identifier).stem
-    ext = Path(identifier).suffix
+    name   = Path(identifier).stem
+    ext    = Path(identifier).suffix
 
     key = f"{cfg['PREFIX_IFDS']}/{name}.ifds.json"
     meta = load_ifds(bucket, key)
 
-    # info.json seperti IIIF
+    levels = meta["levels"]
+    scale_factors = [int(l["downsample"]) for l in levels]
+
     info = {
+        "@context": "http://iiif.io/api/image/2/context.json",
         "@id": f"{request.url_root.rstrip('/')}/iiif/{identifier}",
         "protocol": "http://iiif.io/api/image",
-        "profile": "http://iiif.io/api/image/2/level2.json",
-        "width": meta["levels"][0]["width"],
-        "height": meta["levels"][0]["height"],
-        "tile_width": meta["levels"][0]["tile_width"],
-        "tile_height": meta["levels"][0]["tile_height"],
+        "width": levels[0]["width"],
+        "height": levels[0]["height"],
+        "tiles": [
+            {
+                "width": levels[0]["tile_width"],
+                "height": levels[0]["tile_height"],
+                # "width": 512,
+                # "height": 512,
+                "scaleFactors": scale_factors
+            }
+        ],
+        "profile": [
+            "http://iiif.io/api/image/2/level2.json",
+            {
+                "formats": ["jpg","png"],
+                "qualities": ["default", "gray"]
+            }
+        ]
     }
     return info
 
@@ -197,14 +246,17 @@ def get_tile(identifier, region, size, rotation, quality, fmt, cfg):
         x = y = 0
         w = int(levels[0]["width"])
         h = int(levels[0]["height"])
+
     else:
         x, y, w, h = map(int, region.split(","))
 
     # ----------------------------------------------------
     # IIIF Size Parsing
     # ----------------------------------------------------
-    if size == "full":
-        tw, th = w, h
+    # if TIFF single-resolution and asking for full thumbnail
+    if region == "full" and size == "full" and len(levels) == 1:
+        return fast_thumbnail(levels[0], bucket, wsi_key, jpegtables)
+
     elif size.endswith(","):
         tw = int(size[:-1])
         th = int(round(h * (tw / w)))
