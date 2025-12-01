@@ -1,0 +1,43 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite
+*.log
+.env
+.venv/
+.vscode/
+.idea/
+.DS_Store
+.git/
+.gitignore
+uv.lock.backup
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtualenv / uv / venv
+.venv/
+uv.lock
+*.egg-info/
+
+# VCS
+.git/
+.gitignore
+
+# Editor/IDE
+.vscode/
+.idea/
+
+# OS / temp
+.DS_Store
+Thumbs.db
+
+# Data besar (jika mount di runtime)
+slides/
+media/
+data/
