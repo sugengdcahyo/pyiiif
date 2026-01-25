@@ -1,6 +1,4 @@
 # wsi/iiif.py
-import math
-
 
 class IIIFInfoBuilder:
     """

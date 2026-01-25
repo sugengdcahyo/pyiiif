@@ -100,4 +100,3 @@ upload_file_svs_tiff(local_file, slide_id)
 generate_info_json(local_file, slide_id)
 generate_zoomlevel_json(local_file, slide_id)
 # generate_thumbnail(local_file, slide_id)
-

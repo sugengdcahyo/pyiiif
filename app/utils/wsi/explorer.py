@@ -255,7 +255,7 @@ class WSITagExplorer:
             key=lambda x: x["tags"][256]["value"],
             reverse=True
         )
-        
+
         # 3. Fetch base resolution to count downsample
         base_width = usable_sorted[0]["tags"][256]["value"]
 
@@ -270,7 +270,7 @@ class WSITagExplorer:
                 raw = bytes(raw)
 
             jpt = base64.b64encode(raw).decode("utf-8")
-        
+
         # 5. Build all levels
         levels = []
         for level_idx, ifd in enumerate(usable_sorted):
