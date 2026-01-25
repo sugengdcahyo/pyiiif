@@ -1,5 +1,5 @@
 # Ignore ETL log transaction
-etl*
+etl_*
 
 # project directory
 .DS_Store
